@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAI OS | ARCHITECT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;       
+            --bg-surface: #0a0a0a;    
+            --bg-terminal: #080808;
+            --text-primary: #e5e5e5;  
+            --text-secondary: #777; 
+            --accent-green: #7ca37c;
+            --accent-wood: #8c6b5d;
+            --accent-blue: #5d8c8c;
+            --border: #1a1a1a;
+            --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- INTRO / INPUT --- */
+        #intro-layer {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 500;
+            background: var(--bg-deep);
+            transition: all 0.8s var(--ease-smooth);
+        }
+        .logo-main { font-size: 3rem; font-weight: 500; margin-bottom: 10px; }
+        .logo-sub { color: var(--accent-wood); letter-spacing: 2px; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 40px;}
+        .input-wrapper { width: 600px; transition: all 0.8s var(--ease-smooth); }
+        input[type="text"] {
+            width: 100%; background: #0f0f0f; border: 1px solid var(--border);
+            padding: 20px; font-family: 'Inter'; font-size: 1.1rem; color: #fff;
+            outline: none; border-radius: 8px; text-align: center;
+        }
+        input[type="text"]:focus { border-color: var(--accent-wood); }
+
+        body.processing #intro-layer { 
+            justify-content: flex-end; padding-bottom: 20px; background: transparent; pointer-events: none;
+        }
+        body.processing .logo-group { opacity: 0; transform: translateY(-20px); }
+        body.processing .input-wrapper { width: 95%; max-width: 1600px; pointer-events: all; }
+        body.processing input[type="text"] { 
+            background: #080808; border-color: #222; text-align: left; padding: 15px; font-size: 0.9rem; color: var(--accent-green);
+        }
+
+        /* --- OVERLAYS --- */
+        #sequence-overlay {
+            position: fixed; inset: 0; background: var(--bg-deep); z-index: 400;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s;
+        }
+        .seq-visual-container { width: 60%; height: 300px; border: 1px solid var(--border); opacity: 0; transform: scale(0.95); transition: all 0.8s; }
+        .seq-visual-container.visible { opacity: 1; transform: scale(1); }
+
+        /* --- WORKSPACE --- */
+        #workspace {
+            position: absolute; inset: 0; top: 0; padding-bottom: 80px;
+            opacity: 0; transition: opacity 1s; pointer-events: none;
+            display: flex; flex-direction: column;
+        }
+        body.active-mode #workspace { opacity: 1; pointer-events: all; }
+
+        .row-top {
+            height: 35%;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            background: radial-gradient(circle at center, #0a0a0a 0%, #050505 100%);
+        }
+        
+        /* STATUS BADGE */
+        #status-badge {
+            position: absolute; top: 15px; right: 20px;
+            background: #111; padding: 5px 12px; border-radius: 4px; border: 1px solid #333;
+            font-size: 0.7rem; font-weight: 600; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 8px;
+            transition: color 0.3s, border-color 0.3s;
+        }
+        #status-badge.active { color: var(--accent-green); border-color: var(--accent-green); }
+        #status-badge.thinking { color: var(--accent-blue); border-color: var(--accent-blue); }
+
+        .svg-container { width: 100%; height: 100%; padding: 10px; }
+        .svg-container svg { width: 100%; height: 100%; }
+
+        .row-bottom { flex: 1; display: flex; overflow: hidden; }
+
+        .col-screen {
+            flex: 1; border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; background: #000; position: relative; padding: 20px;
+        }
+        .screen-wrapper { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .bg-screen { max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0.9; border: 1px solid #222; }
+
+        .col-terminal {
+            flex: 1.2; border-right: 1px solid var(--border); background: var(--bg-terminal);
+            display: flex; flex-direction: column; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+        }
+        .terminal-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #ccc; }
+        .term-entry { margin-bottom: 15px; white-space: pre-wrap; word-break: break-all; }
+        .term-cmd { color: var(--accent-wood); font-weight: bold; margin-bottom: 4px; }
+        .term-thought { color: var(--accent-blue); font-style: italic; opacity: 0.8; margin-bottom: 5px; border-left: 2px solid var(--accent-blue); padding-left: 10px; }
+
+        .col-log { width: 350px; background: var(--bg-surface); display: flex; flex-direction: column; }
+        .timeline-scroll { flex: 1; overflow-y: auto; padding: 25px; }
+        .log-entry { 
+            position: relative; padding-left: 20px; margin-bottom: 20px;
+            font-size: 0.8rem; color: var(--text-secondary); border-left: 1px solid #222;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .log-entry::before {
+            content: ''; position: absolute; left: -3px; top: 0; bottom:0; margin: auto 0;
+            width: 5px; height: 5px; background: #333; border-radius: 50%;
+        }
+        .log-entry.active { color: var(--text-primary); border-left-color: var(--accent-green); }
+        .log-entry.active::before { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        
+        /* SPINNER */
+        .spinner {
+            width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.1);
+            border-top: 2px solid var(--accent-green); border-radius: 50%;
+            animation: spin 0.8s linear infinite; display: none;
+        }
+        .log-entry.loading .spinner { display: block; }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .label {
+            font-family: 'Inter'; font-size: 0.65rem; color: #555; 
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #222; }
+
+    </style>
+</head>
+<body>
+
+    <div id="intro-layer">
+        <div class="logo-group">
+            <div class="logo-main">PAI OS</div>
+            <div class="logo-sub">Contextual Architecture Interface</div>
+        </div>
+        <div class="input-wrapper">
+            <input type="text" id="user-input" placeholder="Define Mission Parameters..." autocomplete="off">
+        </div>
+    </div>
+
+    <div id="sequence-overlay">
+        <div style="font-family:'JetBrains Mono'; color:var(--accent-green); margin-bottom:20px;" id="seq-text">INITIALIZING...</div>
+        <div id="seq-visual" class="seq-visual-container"></div>
+    </div>
+
+    <div id="workspace">
+        <div class="row-top">
+            <span class="label" style="position:absolute; top:15px; left:20px;">Mission Dashboard</span>
+            <div id="status-badge">IDLE</div>
+            <div id="svg-hud" class="svg-container"></div>
+        </div>
+
+        <div class="row-bottom">
+            <div class="col-screen">
+                <span class="label">Remote Feed</span>
+                <div class="screen-wrapper">
+                    <img id="agent-screen" class="bg-screen" src="" alt="NO SIGNAL">
+                </div>
+            </div>
+
+            <div class="col-terminal">
+                <div style="padding: 15px 20px; border-bottom:1px solid var(--border);">
+                    <span class="label" style="margin:0;">Thought Process & Shell</span>
+                </div>
+                <div id="terminal-content" class="terminal-scroll">
+                    <div class="term-entry term-out">System connected.</div>
+                </div>
+            </div>
+
+            <div class="col-log">
+                <div style="padding: 15px 25px; border-bottom:1px solid var(--border);">
+                    <span class="label" style="margin:0;">Execution Timeline</span>
+                </div>
+                <div id="timeline" class="timeline-scroll">
+                    <div class="log-entry">Session Started.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = ''; 
+        let eventSource = null;
+        let planResolve = null; 
+        let currentThoughtDiv = null; 
+        
+        const ui = {
+            body: document.body,
+            input: document.getElementById('user-input'),
+            status: document.getElementById('status-badge'),
+            seq: {
+                overlay: document.getElementById('sequence-overlay'),
+                text: document.getElementById('seq-text'),
+                visual: document.getElementById('seq-visual')
+            },
+            ws: {
+                screen: document.getElementById('agent-screen'),
+                svg: document.getElementById('svg-hud'),
+                term: document.getElementById('terminal-content'),
+                log: document.getElementById('timeline')
+            }
+        };
+
+        // --- HELPER ---
+        function setStatus(text, type='default') {
+            ui.status.innerText = text;
+            ui.status.className = ''; 
+            if(typeof text === 'string' && (text.includes("planning") || text.includes("analysis"))) {
+                 ui.status.classList.add('thinking');
+            } else {
+                 ui.status.classList.add('active');
+            }
+        }
+
+        function streamTextToTerminal(cmd, output, isThought=false) {
+            const entry = document.createElement('div');
+            entry.className = 'term-entry';
+            
+            if(isThought) {
+                entry.innerHTML = `<div class="term-thought">${output}</div>`;
+            } else {
+                const header = document.createElement('div');
+                header.className = 'term-cmd';
+                header.innerText = `> ${cmd}`;
+                entry.appendChild(header);
+
+                const body = document.createElement('div');
+                body.className = 'term-out';
+                body.innerText = typeof output === 'object' ? JSON.stringify(output, null, 2) : output;
+                entry.appendChild(body);
+            }
+            
+            ui.ws.term.appendChild(entry);
+            ui.ws.term.scrollTop = ui.ws.term.scrollHeight;
+        }
+
+        // --- STREAMING THOUGHTS ---
+        function handleThoughtStream(chunk) {
+            if(!currentThoughtDiv) {
+                const entry = document.createElement('div');
+                entry.className = 'term-entry';
+                currentThoughtDiv = document.createElement('div');
+                currentThoughtDiv.className = 'term-thought';
+                entry.appendChild(currentThoughtDiv);
+                ui.ws.term.appendChild(entry);
+            }
+            currentThoughtDiv.innerText += chunk;
+            ui.ws.term.scrollTop = ui.ws.term.scrollHeight;
+        }
+
+        // --- LOGGING ---
+        let activeLogSpinner = null;
+        function addLog(msg, type='active', withSpinner=false) {
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            if(withSpinner) div.classList.add('loading');
+            
+            div.innerHTML = `<span>${msg}</span><div class="spinner"></div>`;
+            ui.ws.log.appendChild(div);
+            ui.ws.log.scrollTop = ui.ws.log.scrollHeight;
+            
+            if(withSpinner) activeLogSpinner = div;
+        }
+
+        // --- SSE HANDLER ---
+        function connect() {
+            if(eventSource) return;
+            eventSource = new EventSource(`${API_BASE}/events`);
+            
+            eventSource.onopen = () => {
+                console.log("Connected to Event Stream");
+            };
+
+            // 1. General Logs
+            eventSource.addEventListener('log', e => addLog(JSON.parse(e.data)));
+            
+            // 2. High-Level State (FIXED: Listens to 'status' now)
+            eventSource.addEventListener('status', e => {
+                const state = JSON.parse(e.data);
+                setStatus(state);
+            });
+
+            // 3. Thoughts (FIXED: Reset logic)
+            eventSource.addEventListener('thought_partial', e => {
+                handleThoughtStream(JSON.parse(e.data));
+            });
+
+            // 4. Screen Updates
+            eventSource.addEventListener('screen_update', e => {
+                const b64 = JSON.parse(e.data);
+                if(b64 && b64.length > 100) ui.ws.screen.src = `data:image/jpeg;base64,${b64}`;
+            });
+
+            // 5. Planner Visuals (FIXED: Listens to 'dashboard_update')
+            eventSource.addEventListener('dashboard_update', e => {
+                try {
+                    const svgContent = JSON.parse(e.data); // Data is just the string
+                    
+                    // If we are waiting in the intro sequence, resolve the promise
+                    if(planResolve) { 
+                        planResolve(svgContent); 
+                        planResolve = null; 
+                    } 
+                    
+                    // Always update the HUD in the workspace
+                    if(svgContent) {
+                        ui.ws.svg.innerHTML = svgContent;
+                        // Also update visual container in overlay if still visible
+                        ui.seq.visual.innerHTML = svgContent;
+                    }
+                } catch(err) {
+                    console.error("SVG Parse Error", err);
+                }
+            });
+
+            // 6. CMD Output
+            eventSource.addEventListener('cmd_stream', e => {
+                const d = JSON.parse(e.data);
+                streamTextToTerminal(d.cmd, d.output);
+            });
+
+            // 7. Success/Error
+            eventSource.addEventListener('success', e => addLog(JSON.parse(e.data), 'active'));
+            eventSource.addEventListener('error', e => addLog(JSON.parse(e.data), 'active'));
+        }
+
+        // --- INIT SEQUENCE ---
+        async function runSequence(query) {
+            // Send Request
+            try {
+                const res = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: query })
+                });
+                const data = await res.json();
+                if(data.status === 'busy') {
+                    alert("Agent is busy!");
+                    return;
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Connection failed.");
+                return;
+            }
+
+            ui.body.classList.add('processing');
+            ui.input.blur();
+            ui.seq.overlay.style.opacity = '1';
+            
+            await showSeqText("Parsing Architecture...");
+            
+            // Wait for the Plan Visual Event (Timeout 20s)
+            const svgCode = await waitForPlan(20000); 
+            
+            if(svgCode) {
+                ui.seq.visual.innerHTML = svgCode;
+                ui.ws.svg.innerHTML = svgCode; // Pre-fill workspace
+                await showSeqText("Structure Defined.");
+                ui.seq.visual.classList.add('visible');
+                await new Promise(r => setTimeout(r, 2000));
+            } else {
+                await showSeqText("Execution Mode (No Visual).");
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+            ui.seq.overlay.style.opacity = '0';
+            ui.body.classList.add('active-mode');
+        }
+
+        function waitForPlan(ms) {
+            return new Promise(r => {
+                planResolve = r;
+                // Fallback
+                setTimeout(() => { if(planResolve) { planResolve(null); planResolve=null;} }, ms);
+            });
+        }
+        
+        async function showSeqText(t) {
+            ui.seq.text.style.opacity = 0;
+            await new Promise(r=>setTimeout(r,300));
+            ui.seq.text.innerText = t;
+            ui.seq.text.style.opacity = 1;
+        }
+
+        ui.input.addEventListener('keypress', e => {
+            if(e.key==='Enter' && ui.input.value.trim()) runSequence(ui.input.value.trim());
+        });
+
+        window.onload = connect;
+    </script>
+</body>
+</html>

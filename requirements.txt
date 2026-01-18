@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sse-starlette
+redis
+python-dotenv
+google-genai
+mss
+pyautogui
+pywinauto
+pytesseract
+easyocr
+opencv-python
+numpy
+pillow
+pypiwin32

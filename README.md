@@ -15,7 +15,7 @@ It uses a **Hybrid Vision System** combining **Vision (Screenshots with OCR)** a
 ### 🎥 Demo
 
 *(Watch the agent solve a multi-step math problem, log the results, and analyze a local image file autonomously, after setting the windows theme to light mode.)*
-
+https://github.com/user-attachments/assets/ec7fab50-e609-42b6-a085-f3912d2b9029
 ---
 
 ## 🏗️ Architecture

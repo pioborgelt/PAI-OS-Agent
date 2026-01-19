@@ -115,6 +115,34 @@ I developed the PAI OS Agent as a "Deep Dive" into Agentic AI workflows and as a
 Please note that this project is **not actively maintained**. It stands as a functional "Proof of Concept" representing my engineering skillset at this time. I am currently directing my focus toward new academic challenges and next-generation AI research.
 
 
+### 🧠 Technical Deep Dive: Engineering the "Brain"
+
+While many agents rely on simple `screenshot -> LLM -> click` loops, PAI OS employs a sophisticated architecture designed for **reliability in multi-step workflows** (e.g., "Open Calculator, perform calculation, copy result to Notepad").
+
+#### 1. The Perception Pipeline (Hybrid Vision)
+Standard Vision-Language Models (VLMs) struggle with small text and low-contrast UI elements. To solve this, I implemented a multi-stage perception stack:
+*   **Layer 1: Structural Analysis (UIA):** The agent first queries the Windows Accessibility Tree via `pywinauto`. This provides exact coordinates and object types (Buttons, TextFields) without "guessing."
+*   **Layer 2: Neural OCR Fallback:** If the UIA tree is empty (common in Electron apps, Games, or VMs), the system automatically triggers **EasyOCR (CUDA accelerated)**.
+*   **Coordinate Transformation:** The system maps relative OCR bounding boxes back to absolute global screen coordinates, allowing the agent to click buttons inside a virtual machine window as if they were native controls.
+
+#### 2. Focus Logics & Token Efficiency
+Sending a full 4K desktop screenshot to an LLM is inefficient and vulnerable to hallucinations. PAI OS implements **Dynamic Viewport Cropping**:
+*   The agent tracks the `Active Window Handle`.
+*   Before inference, the visual pre-processor crops the screenshot to the active window bounds (plus a small margin).
+*   **Result:** The model sees the target application in high resolution while background noise is eliminated. This significantly increases success rates for complex UIs while reducing token costs.
+
+#### 3. Strategic State Management (The "Sprint" Protocol)
+To prevent the common "Agent Loop of Death" (repeating the same failed click), the logic is split:
+*   **The Planner (Gemini Pro):** Holds the "Long Term Memory" (`grounding_notes`). It creates a high-level **Sprint Plan** (a list of 5-10 atomic actions) and defines a **Success Condition** (e.g., "Calculator window is visible").
+*   **The Executor (Gemini Flash):** Executes the sprint blindly but fast.
+*   **Correction Logic:** If the Executor finishes the sprint but the Planner's `Success Condition` is not met via visual verification, the Planner analyzes the failure, updates the `grounding_notes` (e.g., *"Button X was disabled"*), and generates a *new* strategy instead of retrying blindly.
+
+#### 4. Asynchronous IPC Architecture
+Python's Global Interpreter Lock (GIL) often causes UI freezes when running heavy logic.
+*   **Separation of Concerns:** The main Agent runs in one process, while the OS Interaction Logic runs in a completely separate process (`server.py`).
+*   **Communication:** They exchange data via a custom IPC protocol (using `multiprocessing.connection`). This ensures the UI Analysis Server can poll 60Hz mouse updates while the Agent waits for API responses, preventing "Application Not Responding" states.
+
+
 ## 🍜 About the Project (and me)
 
 I am a **17-year-old student** from Germany with a passion for AI Engineering.
